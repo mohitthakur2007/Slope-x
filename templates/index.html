@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SLOPE-X — Landslide Early Warning</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">SLOPE-X</div>
+    <div class="sub">AI-based landslide risk monitoring & early warning • NER</div>
+  </div>
+  <div class="live"><span></span> DEMO MONITORING</div>
+</header>
+
+<main>
+<section class="hero">
+  <div>
+    <h1>See risk before the landslide.</h1>
+    <p>Combine rainfall, terrain, soil, land cover and historical events into a location-specific risk score.</p>
+  </div>
+  <div class="stat"><b id="highCount">—</b><small>HIGH-RISK ZONES</small></div>
+  <div class="stat"><b id="monitored">8</b><small>LOCATIONS MONITORED</small></div>
+</section>
+
+<section class="grid">
+  <div class="card mapcard">
+    <div class="cardhead"><h2>NER Risk Map</h2><span class="pill">LIVE DEMO</span></div>
+    <div id="map"></div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead"><h2>Risk Simulator</h2></div>
+    <p class="hint">Change conditions to demonstrate how the early-warning engine responds.</p>
+    <form id="riskForm">
+      <label>Location
+        <select id="location">
+          {% for l in locations %}<option value="{{l.name}}">{{l.name}}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="two">
+        <label>24h Rainfall (mm)<input id="rainfall" type="number" value="220"></label>
+        <label>Rainfall intensity (mm/h)<input id="intensity" type="number" value="48"></label>
+      </div>
+      <div class="two">
+        <label>Slope (°)<input id="slope" type="number" value="38"></label>
+        <label>Elevation (m)<input id="elevation" type="number" value="1100"></label>
+      </div>
+      <div class="two">
+        <label>Soil<select id="soil"><option>Clay/Loam</option><option>Loam</option><option>Laterite/Loam</option><option>Sandy Loam</option><option>Alluvial</option></select></label>
+        <label>Land cover<select id="landcover"><option>Dense Forest</option><option>Agriculture</option><option>Built-up</option><option>Bare Land</option></select></label>
+      </div>
+      <div class="two">
+        <label>Drainage<select id="drainage"><option>Good</option><option selected>Moderate</option><option>Poor</option></select></label>
+        <label>Past events (10yr)<input id="historical" type="number" value="4"></label>
+      </div>
+      <button type="submit">CALCULATE RISK</button>
+    </form>
+    <div id="result" class="result">
+      <div class="score">—<small>/100</small></div>
+      <div><strong>READY</strong><p>Run the simulator to generate a warning.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="cardhead"><h2>Monitoring Summary</h2><span class="muted">Synthetic demo data</span></div>
+  <div id="tableWrap"></div>
+</section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map=L.map('map').setView([25.5,92.5],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);
+let markers=[];
+
+function color(level){ return level==='HIGH'?'#d9363e':level==='MODERATE'?'#e7a51b':'#2d9b67'; }
+
+async function loadLocations(){
+ const data=await fetch('/api/locations').then(r=>r.json());
+ data.forEach(x=>{
+   const m=L.circleMarker([x.lat,x.lon],{radius:10,color:color(x.level),fillColor:color(x.level),fillOpacity:.8,weight:2})
+    .addTo(map).bindPopup(`<b>${x.name}</b><br>Risk: <b>${x.score}/100 (${x.level})</b><br>Rainfall: ${x.rainfall} mm/24h<br>Slope: ${x.slope}°`);
+   markers.push(m);
+ });
+ const high=data.filter(x=>x.level==='HIGH').length;
+ document.getElementById('highCount').textContent=high;
+ const rows=data.sort((a,b)=>b.score-a.score).map(x=>`<tr><td>${x.name}</td><td>${x.rainfall} mm</td><td>${x.slope}°</td><td><b class="risk-${x.level.toLowerCase()}">${x.score}</b></td><td><span class="badge ${x.level.toLowerCase()}">${x.level}</span></td></tr>`).join('');
+ document.getElementById('tableWrap').innerHTML=`<table><thead><tr><th>Location</th><th>Rainfall</th><th>Slope</th><th>Score</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+loadLocations();
+
+document.getElementById('riskForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const payload={rainfall:+rainfall.value,intensity:+intensity.value,slope:+slope.value,elevation:+elevation.value,
+ soil:soil.value,landcover:landcover.value,drainage:drainage.value,historical:+historical.value};
+ const r=await fetch('/api/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(x=>x.json());
+ document.getElementById('result').innerHTML=`<div class="score">${r.score}<small>/100</small></div><div><strong class="risk-${r.level.toLowerCase()}">${r.level} RISK</strong><p>${r.action}</p></div>`;
+ document.getElementById('result').className='result '+r.level.toLowerCase();
+});
+</script>
+</body>
+</html>
