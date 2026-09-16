@@ -1,4 +1,4 @@
-# TerraShield — SIH Internal Hackathon MVP
+# SlopeX — SIH Internal Hackathon MVP
 
 ## What this demonstrates
 A location-specific landslide risk monitoring dashboard for the North-East Region (NER):
@@ -33,4 +33,4 @@ The current location conditions are synthetic demo data. Do not claim they are l
 For a production version, integrate verified rainfall, DEM/slope, soil, land-cover, drainage and historical landslide datasets and validate the model spatially and temporally.
 
 ## Pitch line
-"TerraShield converts environmental and terrain signals into an actionable, location-specific landslide risk score so authorities can monitor vulnerable zones and trigger early-warning workflows before conditions become critical."
+"SlopeX converts environmental and terrain signals into an actionable, location-specific landslide risk score so authorities can monitor vulnerable zones and trigger early-warning workflows before conditions become critical."
